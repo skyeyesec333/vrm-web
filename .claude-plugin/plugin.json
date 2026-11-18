@@ -1,0 +1,13 @@
+{
+  "name": "vrm-web",
+  "displayName": "VRM on the Web",
+  "version": "0.1.0",
+  "description": "Take a VRoid/VRM character to a light, dancing character on a website: pack and gzip the VRM, convert mocap to compact takes, retarget Mixamo clips, a song-clock dance, a living face, and a cel shader with its own key light.",
+  "author": {
+    "name": "skyeyesec333"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/skyeyesec333/vrm-web",
+  "homepage": "https://github.com/skyeyesec333/vrm-web",
+  "keywords": ["vrm", "vroid", "three-vrm", "threejs", "mocap", "animation", "cel-shading", "webgl"]
+}

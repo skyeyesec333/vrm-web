@@ -1,0 +1,17 @@
+{
+  "name": "vrm-web",
+  "description": "VRoid/VRM characters on the web with three.js.",
+  "owner": {
+    "name": "skyeyesec333"
+  },
+  "plugins": [
+    {
+      "name": "vrm-web",
+      "source": "./",
+      "description": "Skill: vrm-web. Pack and gzip a VRM, mocap FBX to compact takes, Mixamo retargeting, a dance locked to a song, face life, and a cel shader with its own key light.",
+      "category": "development",
+      "tags": ["vrm", "three-vrm", "threejs", "animation"],
+      "version": "0.1.0"
+    }
+  ]
+}
