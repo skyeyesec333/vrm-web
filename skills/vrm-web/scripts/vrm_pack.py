@@ -26,6 +26,9 @@ Options:
   --meta-restrict           VRM 1.0 meta: only the author may use the avatar, no redistribution, no modification,
                             no commercial use by others (for an original character you do not license out)
   --meta-authors "A;B"      VRM 1.0 meta: replace the authors list (';'-separated)
+  --meta-clear-contact      remove the meta's contact details and reference links (VRM 1.0 contactInformation and
+                            references; VRM 0.x contactInformation and reference). The meta ships with the model and
+                            anyone who downloads it can read it: every field that names a person is printed below.
   --dry-run                 report only, write nothing
 
 Needs Python 3.8+ and Pillow with WebP (python3 -c "from PIL import features; print(features.check('webp'))").
@@ -44,6 +47,13 @@ def die(msg):
     sys.exit(f"vrm_pack: {msg}")
 
 
+def at(lst, i, what):
+    """lst[i] for an index read from the file: a whole number inside the list (Python would accept -1 silently)."""
+    if not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < len(lst):
+        die(f"the file points at {what} {i!r}, which does not exist (it has {len(lst)}): damaged or hand-edited file")
+    return lst[i]
+
+
 def read_glb(path):
     with open(path, "rb") as f:
         b = f.read()
@@ -55,7 +65,12 @@ def read_glb(path):
     n, kind = struct.unpack("<I4s", b[12:20])
     if kind != b"JSON" or n > MAX_JSON or 20 + n > len(b):
         die(f"{path}: bad JSON chunk")
-    j = json.loads(b[20:20 + n])
+    try:
+        j = json.loads(b[20:20 + n])
+    except (ValueError, RecursionError) as e:
+        die(f"{path}: the JSON chunk does not parse ({type(e).__name__})")
+    if not isinstance(j, dict):
+        die(f"{path}: the JSON chunk is not an object")
     rest = b[20 + n:]
     bin_ = b""
     if len(rest) >= 8:
@@ -84,6 +99,7 @@ def main():
     ap.add_argument("--no-gzip", action="store_true")
     ap.add_argument("--meta-restrict", action="store_true")
     ap.add_argument("--meta-authors")
+    ap.add_argument("--meta-clear-contact", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -102,8 +118,11 @@ def main():
     bvs, accs = j.get("bufferViews", []), j.get("accessors", [])
 
     def view(i):
-        o = bvs[i].get("byteOffset", 0)
-        return BIN[o:o + bvs[i]["byteLength"]]
+        bv = at(bvs, i, "buffer view")
+        o, n = bv.get("byteOffset", 0), bv.get("byteLength")
+        if not isinstance(o, int) or not isinstance(n, int) or o < 0 or n < 0 or o + n > len(BIN):
+            die(f"buffer view {i} lies outside the file's data")
+        return BIN[o:o + n]
 
     ext = j.get("extensions", {})
     v1 = ext.get("VRMC_vrm")
@@ -137,12 +156,24 @@ def main():
               f"avatarPermission={meta.get('avatarPermission')}, redistribution={meta.get('allowRedistribution')}, "
               f"modification={meta.get('modification')}")
     elif a.meta_restrict or a.meta_authors is not None:
-        die("--meta-* options support VRM 1.0 only (export from VRoid Studio as VRM 1.0)")
+        die("--meta-restrict and --meta-authors support VRM 1.0 only (export from VRoid Studio as VRM 1.0)")
+    meta = (v1 or v0).get("meta", {}) if isinstance((v1 or v0).get("meta", {}), dict) else {}
+    contact = ("contactInformation", "references") if v1 else ("contactInformation", "reference")
+    if a.meta_clear_contact:
+        cleared = [k for k in contact if k in meta]
+        for k in cleared:
+            meta.pop(k)
+        print(f"[pack] meta: removed {', '.join(cleared) if cleared else 'nothing (no contact fields)'}")
+    # Every meta field that can name a person ships with the model: show them so nothing goes out unseen.
+    people = ("authors", "contactInformation", "references", "copyrightInformation", "thirdPartyLicenses") if v1 else \
+             ("author", "contactInformation", "reference", "allowedUserName", "title")
+    shown = {k: meta[k] for k in people if meta.get(k) not in (None, "", [])}
+    print("[pack] meta shipped with the model (public):" + ("".join(f"\n         {k}: {v!r}" for k, v in shown.items()) or " no personal fields"))
 
     # ---- images
     images = j.get("images", [])
     textures = j.get("textures", [])
-    tex_src = lambda t: textures[t["index"]].get("source")
+    tex_src = lambda t: at(textures, t.get("index"), "texture").get("source")
     normal_imgs = {tex_src(m["normalTexture"]) for m in j.get("materials", []) if "normalTexture" in m}
     thumb = None
     if v1:
@@ -191,7 +222,7 @@ def main():
                  for bd in e.get("morphTargetBinds", [])]
         bind_refs = [bd for e in list(ex.get("preset", {}).values()) + list(ex.get("custom", {}).values())
                      for bd in e.get("morphTargetBinds", [])]
-        mesh_of = lambda node: j["nodes"][node].get("mesh")
+        mesh_of = lambda node: at(j.get("nodes", []), node, "node").get("mesh")
     else:
         groups = v0.get("blendShapeMaster", {}).get("blendShapeGroups", [])
         bind_refs = [bd for g in groups for bd in g.get("binds", [])]
@@ -204,6 +235,8 @@ def main():
         keep = sorted({idx for ref, idx in binds if mesh_of(ref) == mi})
         remap = {old: new for new, old in enumerate(keep)}
         total = len(prims[0]["targets"])
+        if any(not isinstance(k, int) or isinstance(k, bool) or not 0 <= k < total for k in keep):
+            die(f"mesh {mi}: an expression binds a face shape that does not exist (the mesh has {total})")
         for p in prims:
             p["targets"] = [{"POSITION": p["targets"][k]["POSITION"]} for k in keep if "POSITION" in p["targets"][k]]
             if len(p["targets"]) != len(keep):
@@ -231,7 +264,7 @@ def main():
         if "inverseBindMatrices" in s: used_acc.add(s["inverseBindMatrices"])
     for an in j.get("animations", []):
         for s in an["samplers"]: used_acc.update((s["input"], s["output"]))
-    for acc in [accs[i] for i in used_acc]:
+    for acc in [at(accs, i, "accessor") for i in used_acc]:
         if "sparse" in acc:
             die("sparse accessors are not handled; export without sparse morph targets")
     amap = {old: new for new, old in enumerate(sorted(used_acc))}
@@ -277,4 +310,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Image.DecompressionBombError:
+        die("an image in the file is too large to open safely (Pillow's decompression-bomb limit)")
+    except RecursionError:
+        die("the file's JSON is nested too deeply")
+    except (KeyError, TypeError, AttributeError) as e:
+        die(f"the file is missing or has a wrong-typed field ({type(e).__name__}: {e}): damaged or not a VRoid/VRM export")
+    except OSError as e:
+        if getattr(e, "filename", None) is None and "image" in str(e).lower():
+            die(f"an image in the file could not be read ({e})")
+        raise

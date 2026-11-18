@@ -14,7 +14,8 @@ A portfolio, studio or product site that shows the work to win clients is **comm
 4. **Redistribution.** Terms often forbid sharing files "in a form from which the original can be extracted". A site serving converted, trimmed `.take` files is closer to embedding than redistribution, but it is a grey area: say so.
 5. **Choreography.** Mocap of a real song's choreography (a K-pop dance, a challenge dance) carries the choreographer's and label's rights, which a mocap vendor usually says it cannot grant. The user must secure those separately or choose original choreography.
 6. **Evidence and fingerprints.** Vendors may ask for evidence of use. Source files can carry the vendor's or capture studio's names in metadata; the converted files from this skill carry none, but a hidden fingerprint in the motion curves cannot be ruled out.
-7. **Music.** The song the character dances to has its own licence (and an AI-generated track has its provider's terms): check it the same way.
+7. **The avatar itself.** A downloaded or bought VRM carries its own licence in its meta (who may use it, commercial use, redistribution, modification, credit): read it (`vrm_pack.py --dry-run` prints the personal fields; three-vrm exposes the rest as `vrm.meta`). Parts bought separately (hair, outfits, textures from a marketplace) have their own terms, which may forbid commercial use or redistribution inside a model file served to every visitor.
+8. **Music.** The song the character dances to has its own licence (and an AI-generated track has its provider's terms): check it the same way.
 
 ## Write down
 

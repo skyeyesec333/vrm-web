@@ -82,6 +82,9 @@ export function applyCel(root, opts = {}) {
     if (!m.isMesh) return;
     const list = Array.isArray(m.material) ? m.material : [m.material];
     const next = list.map((src) => {
+      /* three-vrm draws an MToon outline as a second, back-faced copy of the material (isOutline). Converting it
+         would add a cel draw with nothing to show; it is left as it is, so a model's own outline still draws. */
+      if (src.isOutline) return src;
       const map = src.map || src.uniforms?.map?.value || null;
       const color = src.color || src.uniforms?.litFactor?.value || new THREE.Color(1, 1, 1);
       const cutoff = src.alphaTest || src.uniforms?.alphaTest?.value || 0;

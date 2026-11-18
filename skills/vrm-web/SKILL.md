@@ -23,7 +23,9 @@ From a VRoid Studio export to a character that dances in time with a song on a p
 ## 1. Pack the VRM
 
 ```sh
-python3 "$S/vrm_pack.py" character.vrm public/models/character.vrm [--meta-restrict] [--meta-authors "Name"]
+python3 "$S/vrm_pack.py" character.vrm public/models/character.vrm [--dry-run]
+    [--meta-restrict] [--meta-authors "Name"] [--meta-clear-contact]
+    [--keep-normal-maps] [--keep-thumbnail] [--webp-quality 1-100] [--no-gzip]
 ```
 
 What goes, and why it is safe ([references/pipeline.md](references/pipeline.md) has the numbers):
@@ -32,6 +34,7 @@ What goes, and why it is safe ([references/pipeline.md](references/pipeline.md) 
 - **the thumbnail** (often ~2 MB).
 - **colour maps** re-saved as WebP when smaller, alpha exact.
 - **the exporter's name** (`asset.generator`). The VRM meta (authors, licence, permissions) is printed and kept; `--meta-restrict` sets the restrictive permissions an original character usually wants (only the author may use it, no redistribution or modification). **Ask the user** before changing authors or permissions; it is their character.
+- **The meta ships publicly.** Anyone can open a VRM and read its meta: author names, contact details (often an email or a social handle), reference links, copyright lines. The packer prints every such field it is about to ship; show them to the user, and pass `--meta-clear-contact` (removes contact information and reference links, VRM 1.0 and 0.x) unless they want them public.
 
 It writes `<out>z`, the gzipped copy the site serves. **Never decimate a VRoid face** (it creases), and don't repaint skin.
 
@@ -74,6 +77,8 @@ python3 "$S/take_info.py" public/motion/*.take        # checks each file; exits 
 A `.take` holds rotations for normalised VRM bones, so it plays on any VRM with no per-model work (`takeClip(buffer, vrm, name)` in the browser). It finds the first real movement and starts half a second before it; that is the first gesture, not always where the dance starts, so pass `--start` when it matters. Names no source file. Two bone-naming schemes are recognised; for another rig, add its names to a map in the script.
 
 **Mixamo-named glTF clips:** `makeRetargeter(vrm)` right after loading, then `retarget(gltf)` returns clips. The spine, neck and head take no rest correction (it pitches the chest and neck), limbs do.
+
+**VRM 0.x models** (older VRoid exports, many downloaded avatars): three-vrm's normalised bones on a 0.x model face the other way, so `takeClip` and the retargeter negate each rotation's x and z and the hips' x and z travel when `vrm.meta.metaVersion === "0"`, as three-vrm's own Mixamo example does. Also call `VRMUtils.rotateVRM0(vrm)` after loading so the model faces the camera like a 1.0 one. Exporting from VRoid Studio as VRM 1.0 avoids all of it.
 
 ## 5. Dance to the song
 

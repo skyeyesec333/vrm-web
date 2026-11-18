@@ -10,7 +10,9 @@
    Only limbs get C (arms rest 45 degrees down in many rigs against straight out on a VRM). The spine, neck and head
    take none: their joints sit at different heights in the two rigs, and "correcting" for that pitches the chest
    forward and the neck back at every frame. Fingers and toes take their limb parent's correction.
-   The hips' travel is scaled by the ratio of hip heights. */
+   The hips' travel is scaled by the ratio of hip heights.
+   VRM 0.x models: three-vrm's normalised bones on a 0.x model face -z, so every rotation's x and z and the hips' x
+   and z are negated, exactly as three-vrm's own Mixamo example does when vrm.meta.metaVersion is "0". */
 import * as THREE from "three";
 
 export const MIXAMO_TO_VRM = {
@@ -73,6 +75,7 @@ function retargetClips(gltf, vrm, restDir, hipsY) {
   }
   const srcHipsY = P(hipsS).y;
   const k = srcHipsY > 1e-6 ? hipsY / srcHipsY : 1;
+  const sx = vrm.meta?.metaVersion === "0" ? -1 : 1;
   const q = new THREE.Quaternion(), rest = new THREE.Quaternion(), prest = new THREE.Quaternion(), cp = new THREE.Quaternion();
   return gltf.animations.map((clip) => {
     const tracks = [];
@@ -88,10 +91,15 @@ function retargetClips(gltf, vrm, restDir, hipsY) {
           if (i && v[i - 4] * q.x + v[i - 3] * q.y + v[i - 2] * q.z + v[i - 1] * q.w < 0) q.set(-q.x, -q.y, -q.z, -q.w);
           q.toArray(v, i);
         }
+        if (sx < 0) for (let i = 0; i < v.length; i += 2) v[i] = -v[i];    /* x and z of each quaternion */
         tracks.push(new THREE.QuaternionKeyframeTrack(`${o.name}.quaternion`, t.times, v));
       } else if (prop === "position" && m === "Hips") {
         const pw = s.parent.matrixWorld, p = new THREE.Vector3(), v = t.values.slice();
-        for (let i = 0; i < v.length; i += 3) p.fromArray(v, i).applyMatrix4(pw).multiplyScalar(k).toArray(v, i);
+        for (let i = 0; i < v.length; i += 3) {
+          p.fromArray(v, i).applyMatrix4(pw).multiplyScalar(k);
+          if (sx < 0) { p.x = -p.x; p.z = -p.z; }
+          p.toArray(v, i);
+        }
         tracks.push(new THREE.VectorKeyframeTrack(`${o.name}.position`, t.times, v));
       }
     }

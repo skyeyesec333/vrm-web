@@ -26,11 +26,17 @@ def check(path):
         return f"bad header length {n}"
     try:
         h = json.loads(b[4:4 + n])
-    except ValueError:
+    except (ValueError, RecursionError):
         return "header is not JSON"
+    if not isinstance(h, dict):
+        return "header is not a JSON object"
     fps, frames, bones = h.get("fps"), h.get("frames"), h.get("bones")
     if not (isinstance(fps, int) and 1 <= fps <= 240 and isinstance(frames, int) and frames >= 2 and isinstance(bones, list) and bones):
-        return f"bad header {h}"
+        return f"bad header {str(h)[:200]}"
+    if not all(isinstance(x, str) for x in bones):
+        return "bone names must all be strings"
+    if len(set(bones)) != len(bones):
+        return "a bone is listed twice"
     unknown = [x for x in bones if x not in VRM_BONES]
     if unknown:
         return f"not VRM humanoid bone names: {unknown[:5]}"

@@ -33,4 +33,4 @@ A VRM is in metres. Scale the scene root (`vrm.scene.scale.setScalar(k)`) to fit
 
 ## Rotations
 
-`VRMUtils.rotateVRM0(vrm)` turns a VRM 0.x model to face +z like 1.0. Takes and retargeted clips assume the VRM 1.0 convention (the figure faces +z, its left is +x).
+`VRMUtils.rotateVRM0(vrm)` turns a VRM 0.x model to face +z like 1.0. That turns the scene only: the normalised bones of a 0.x model still work in its own facing, so `takeClip` and the retargeter also negate rotation x/z and hips x/z when `vrm.meta.metaVersion === "0"` (three-vrm's Mixamo example does the same). Takes are stored in the VRM 1.0 convention (the figure faces +z, its left is +x).
