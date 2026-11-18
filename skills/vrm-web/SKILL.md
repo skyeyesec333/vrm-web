@@ -18,7 +18,7 @@ From a VRoid Studio export to a character that dances in time with a song on a p
 7. licence   references/motion-licences.md            -> before a commercial site uses any motion data
 ```
 
-`S` below is this skill's `scripts/` folder: `${CLAUDE_PLUGIN_ROOT}/skills/vrm-web/scripts` when installed as a plugin, or `~/.claude/skills/vrm-web/scripts` when copied there. Copy the files in `$S/web/` into the user's project (they import `three`; the loader also uses `three/examples/jsm/loaders/GLTFLoader.js`); don't import them from the skill folder.
+`S` below is this skill's `scripts/` folder: `S="${CLAUDE_SKILL_DIR}/scripts"` (for a plugin or a copied skill alike). Copy the files in `$S/web/` into the user's project (they import `three`; the loader also uses `three/examples/jsm/loaders/GLTFLoader.js`); don't import them from the skill folder.
 
 ## 1. Pack the VRM
 
